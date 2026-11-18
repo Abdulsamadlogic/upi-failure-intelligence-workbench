@@ -206,6 +206,7 @@ class FailureTriageService:
         )
         requires_review = (
             category == FailureCategory.UNKNOWN
+            or classifier == "qwen"
             or confidence < self.confidence_threshold
             or bool(projection.state_conflicts)
             or (

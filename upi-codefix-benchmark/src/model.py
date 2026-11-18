@@ -45,7 +45,10 @@ class QwenFailureClassifier:
             device or ("cuda" if torch.cuda.is_available() else "cpu")
         )
         self.max_input_tokens = max_input_tokens
-        self.tokenizer = AutoTokenizer.from_pretrained(model_path)
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            model_path,
+            fix_mistral_regex=True,
+        )
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
         self.model = AutoModelForSequenceClassification.from_pretrained(model_path)
@@ -81,7 +84,10 @@ class QwenFailureClassifier:
         instance.max_input_tokens = max_input_tokens
         labels = [category.value for category in FailureCategory]
         label_to_id = {label: index for index, label in enumerate(labels)}
-        instance.tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
+        instance.tokenizer = AutoTokenizer.from_pretrained(
+            MODEL_ID,
+            fix_mistral_regex=True,
+        )
         if instance.tokenizer.pad_token is None:
             instance.tokenizer.pad_token = instance.tokenizer.eos_token
         instance.model = AutoModelForSequenceClassification.from_pretrained(

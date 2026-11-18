@@ -21,6 +21,7 @@ from src.domain import (
 )
 from src.evaluate import load_test_rows
 from src.incidents import detect_failure_spikes
+from src.model import ModelPrediction
 from src.storage import (
     EventConflictError,
     InvalidCaseTransitionError,
@@ -159,6 +160,33 @@ def test_triage_routes_unresolved_debit_to_human_review() -> None:
     assert result.requires_human_review is True
     assert result.recommended_action
     assert any("debit" in evidence.lower() for evidence in result.evidence)
+
+
+def test_qwen_suggestions_always_require_human_review() -> None:
+    class ConfidentClassifier:
+        def predict(self, text: str) -> ModelPrediction:
+            return ModelPrediction(
+                category=FailureCategory.BENEFICIARY_BANK_UNAVAILABLE,
+                confidence=0.99,
+                probabilities={
+                    FailureCategory.BENEFICIARY_BANK_UNAVAILABLE.value: 0.99,
+                    FailureCategory.UNKNOWN.value: 0.01,
+                },
+            )
+
+    item = event(
+        "evt-unknown",
+        "txn-unknown",
+        code="UNMAPPED",
+        message="no diagnostic details are available",
+        payer_debited=False,
+        beneficiary_credited=False,
+    )
+    result = FailureTriageService(model=ConfidentClassifier()).analyze([item])
+
+    assert result.classifier == "qwen"
+    assert result.confidence == 0.99
+    assert result.requires_human_review is True
 
 
 def test_store_ingestion_is_idempotent_and_rejects_conflicting_event_ids(

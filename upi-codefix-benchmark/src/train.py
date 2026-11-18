@@ -484,7 +484,10 @@ def main() -> None:
                 f"{split_name} split is missing classes: {sorted(missing)}"
             )
 
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
+    tokenizer = AutoTokenizer.from_pretrained(
+        MODEL_ID,
+        fix_mistral_regex=True,
+    )
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     train_dataset = IncidentDataset(

@@ -381,7 +381,7 @@ def load_split(csv_path: Path, expected_split: str) -> list[dict[str, str]]:
     if not csv_path.is_file():
         raise FileNotFoundError(f"Dataset file not found: {csv_path}")
 
-    with csv_path.open(encoding="utf-8", newline="") as file:
+    with csv_path.open(encoding="utf-8-sig", newline="") as file:
         reader = csv.DictReader(file)
         required_columns = {"text", "label", "split", "scenario_id"}
         if reader.fieldnames is None or not required_columns.issubset(reader.fieldnames):

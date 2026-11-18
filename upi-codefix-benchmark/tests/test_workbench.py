@@ -19,6 +19,7 @@ from src.domain import (
     TransactionEvent,
     project_transaction,
 )
+from src.evaluate import load_test_rows
 from src.incidents import detect_failure_spikes
 from src.storage import (
     EventConflictError,
@@ -26,7 +27,7 @@ from src.storage import (
     WorkbenchStore,
 )
 from src.triage import FailureTriageService, ReversalSlaPolicy, classify_with_rules
-from src.train import generate_synthetic_dataset
+from src.train import generate_synthetic_dataset, load_split
 
 
 NOW = datetime(2026, 11, 17, 12, 0, tzinfo=timezone.utc)
@@ -353,3 +354,24 @@ def test_synthetic_dataset_generator_writes_2000_marked_rows(tmp_path) -> None:
     assert len(rows) == 2000
     assert {row["synthetic"] for row in rows} == {"true"}
     assert {row["split"] for row in rows} == {"train", "validation", "test"}
+
+
+def test_dataset_readers_accept_utf8_bom_headers(tmp_path) -> None:
+    dataset_path = tmp_path / "bom_dataset.csv"
+    with dataset_path.open("w", encoding="utf-8-sig", newline="") as file:
+        writer = csv.DictWriter(
+            file,
+            fieldnames=("text", "label", "split", "scenario_id"),
+        )
+        writer.writeheader()
+        writer.writerow(
+            {
+                "text": "No response from gateway",
+                "label": "network_timeout",
+                "split": "test",
+                "scenario_id": "test-001",
+            }
+        )
+
+    assert load_test_rows(dataset_path)[0]["scenario_id"] == "test-001"
+    assert load_split(dataset_path, "test")[0]["label"] == "network_timeout"

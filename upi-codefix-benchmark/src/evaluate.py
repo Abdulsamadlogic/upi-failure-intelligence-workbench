@@ -23,7 +23,7 @@ from src.triage import classify_with_rules
 def load_test_rows(path: Path) -> list[dict[str, str]]:
     if not path.is_file():
         raise FileNotFoundError(f"Dataset file not found: {path}")
-    with path.open(encoding="utf-8", newline="") as file:
+    with path.open(encoding="utf-8-sig", newline="") as file:
         reader = csv.DictReader(file)
         required = {"text", "label", "split", "scenario_id"}
         if reader.fieldnames is None or not required.issubset(reader.fieldnames):
@@ -38,7 +38,7 @@ def load_test_rows(path: Path) -> list[dict[str, str]]:
 
 def validate_split_isolation(path: Path) -> None:
     split_ids: dict[str, set[str]] = {"train": set(), "validation": set(), "test": set()}
-    with path.open(encoding="utf-8", newline="") as file:
+    with path.open(encoding="utf-8-sig", newline="") as file:
         reader = csv.DictReader(file)
         for row in reader:
             split = row["split"].strip().lower()

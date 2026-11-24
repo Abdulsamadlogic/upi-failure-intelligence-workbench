@@ -44,11 +44,10 @@ jobs:
       - name: Run pytest
         env:
           UPI_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/workbench_test
-        run: pytest -q
+        run: python -m pytest -q
 
   docker:
     runs-on: ubuntu-latest
-    needs: test
     steps:
       - name: Check out repository
         uses: actions/checkout@v4

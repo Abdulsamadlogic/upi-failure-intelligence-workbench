@@ -8,6 +8,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-API-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-storage-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![scikit-learn](https://img.shields.io/badge/scikit--learn-evaluation-F7931E?logo=scikitlearn&logoColor=white)](https://scikit-learn.org/)
+[![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 
 A demonstration workbench for reviewing **simulated UPI transaction failures**. It combines deterministic triage rules with an optional fine-tuned classifier, records transaction event history, and routes model suggestions to a human review queue.
 

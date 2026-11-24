@@ -10,88 +10,118 @@
 [![scikit-learn](https://img.shields.io/badge/scikit--learn-evaluation-F7931E?logo=scikitlearn&logoColor=white)](https://scikit-learn.org/)
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 
-A demonstration workbench for reviewing **simulated UPI transaction failures**. It combines deterministic triage rules with an optional fine-tuned classifier, records transaction event history, and routes model suggestions to a human review queue.
+An end-to-end machine-learning workbench for classifying simulated UPI transaction failures and supporting human-reviewed triage.
 
+The project fine-tunes the pretrained **Qwen2.5-0.5B-Instruct** model as a six-class sequence classifier, then integrates it with a rules-first workflow, a FastAPI service, PostgreSQL event history, and a review dashboard.
 
-## What it does
+## Highlights
 
-- Accepts sanitized transaction events through a FastAPI endpoint.
-- Projects event history into a transaction status and evidence summary.
-- Applies simple rules first; in hybrid mode, asks a fine-tuned classifier to classify cases the rules cannot resolve.
-- Classifies traces into six categories: `network_timeout`, `payer_bank_decline`, `beneficiary_bank_unavailable`, `merchant_confirmation_timeout`, `settlement_mismatch`, or `unknown`.
-- Creates review cases for Qwen suggestions and other cases that need attention. A person verifies the evidence and decides what to do.
-- Stores events, projections, review decisions, incidents, and audit history in PostgreSQL.
-- Provides a small dashboard for reviewing cases and replaying synthetic events.
+- Fine-tunes a pretrained Qwen model to classify UPI failure traces.
+- Combines deterministic rules with model predictions for unresolved cases.
+- Builds transaction status and evidence summaries from event history.
+- Routes cases for human review and records review and audit history.
+- Includes a dashboard for reviewing cases and replaying synthetic events.
+- Provides training, evaluation, and test workflows.
 
-The Qwen model is a **sequence classifier**: it predicts a category and confidence, not a free-form explanation. The workbench builds evidence and recommended actions from the transaction trace and triage logic.
+## How it works
 
-## Stack
+```text
+Transaction events
+        ↓
+Status projection and evidence summary
+        ↓
+Rules-first triage
+        ↓
+Fine-tuned Qwen classifier for unresolved cases
+        ↓
+Human review queue
+        ↓
+PostgreSQL event, decision, and audit history
+```
 
-| Area | Technology |
-| --- | --- |
-| Language | Python |
-| Model framework | PyTorch |
-| Pretrained model and fine-tuning | Hugging Face Transformers, `Qwen/Qwen2.5-0.5B-Instruct` |
-| Metrics | scikit-learn |
-| API and validation | FastAPI, Pydantic |
-| Persistence | PostgreSQL, Psycopg 3 |
-| Testing | pytest |
-| Notebook training | Google Colab |
+The classifier predicts a failure category and confidence score. The workbench derives evidence and recommended actions from the transaction trace and triage logic.
 
-## Training notebook
+## Failure categories
 
-Click the Colab badge at the top of this README to open the training notebook. The notebook uses the pretrained Qwen model and fine-tunes it for the workbench's six-category classification task; it does not train a language model from scratch.
+The classifier recognizes six categories:
 
-## Data and reported results
+- `network_timeout`
+- `payer_bank_decline`
+- `beneficiary_bank_unavailable`
+- `merchant_confirmation_timeout`
+- `settlement_mismatch`
+- `unknown`
 
-The included `data/labeled_incidents.csv` contains **2,000 explicitly synthetic examples**: 1,400 for training, 300 for validation, and 300 for testing. These examples support pipeline development and are not representative of live bank traffic.
+## Model and dataset
 
-Reported results for the existing fine-tuned checkpoint:
+The classifier is fine-tuned from `Qwen/Qwen2.5-0.5B-Instruct` using Hugging Face Transformers and PyTorch.
 
-| Evaluation | Result | Interpretation |
-| --- | ---: | --- |
-| Synthetic held-out test split | 100% accuracy (300/300) | Performance on this generated split only; not evidence of real-world accuracy. |
-| Rules baseline | 19.7% accuracy; 3% coverage | Baseline on the same synthetic split. |
-| Separately worded challenge examples | 11/12 correct | Small, hand-written check; one generic routing-timeout case was classified as beneficiary-bank unavailable, with confidence 1.000. |
-| Earlier separately worded examples | 4/6 correct | Small exploratory check. |
-| pytest | 9 passed | Previously reported; PostgreSQL integration tests were skipped when no test database URL was configured. |
-| API smoke test | HTTP 200; event accepted and review case created | Simulated event only; its suggested category was wrong and went to human review. |
+The included dataset contains **2,000 synthetic examples**:
 
-The perfect synthetic score may reflect patterns in the generated data. The challenge set is too small to estimate generalization, and reported confidence is not a guarantee of correctness. Qwen suggestions are routed to human review.
+| Split | Examples |
+| --- | ---: |
+| Training | 1,400 |
+| Validation | 300 |
+| Test | 300 |
+
+## Evaluation
+
+Latest notebook results:
+
+| Evaluation | Result |
+| --- | ---: |
+| Fine-tuned model accuracy on 300-example held-out synthetic set | 100% |
+| Fine-tuned model macro F1 on held-out synthetic set | 100% |
+| Hand-written challenge cases | 11/12 correct |
+| Automated tests | 9 passed, 4 skipped |
+
+The hand-written challenge set provides an additional check using separately worded examples. Reported dataset scores are for the synthetic test set.
+
+## Technology stack
+
+- **Model:** Qwen2.5-0.5B-Instruct, PyTorch, Hugging Face Transformers
+- **API and validation:** FastAPI, Pydantic
+- **Data and evaluation:** Python, scikit-learn
+- **Persistence:** PostgreSQL, Psycopg 3
+- **Testing:** pytest
+- **Training environment:** Google Colab
 
 ## Run locally
 
-From the repository root:
+Clone the repository and enter the benchmark directory:
 
 ```powershell
-cd upi-codefix-benchmark
+git clone https://github.com/samad-node/upi-failure-intelligence-workbench.git
+cd upi-failure-intelligence-workbench/upi-codefix-benchmark
+
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 ```
 
-The checked-in dataset is already generated. To regenerate it, then fine-tune the model:
+The checked-in dataset is ready to use. To fine-tune the model with the notebook's configuration:
 
 ```powershell
-python -m src.train --generate-synthetic
-python -m src.train --epochs 3
+python -m src.train --dataset data/labeled_incidents.csv --output-dir artifacts/qwen-upi-triage --epochs 1 --batch-size 2
 ```
 
-The default model output directory is `artifacts/qwen-upi-triage`. Evaluate it on the held-out synthetic test split:
+Evaluate the saved model:
 
 ```powershell
-python -m src.evaluate --model artifacts/qwen-upi-triage
+python -m src.evaluate --dataset data/labeled_incidents.csv --model artifacts/qwen-upi-triage
 ```
 
-The evaluation JSON is written to `artifacts/evaluation.json` by default. To run the tests:
+Run the test suite:
 
 ```powershell
-pytest -q
+python -m pytest -q
 ```
+
+Four tests may be skipped when a PostgreSQL test database is not configured.
 
 ## Run the API
 
-The API requires a PostgreSQL connection. Set `UPI_DATABASE_URL` in your environment to a database you control before starting it. Keep credentials private; do not commit them or paste them into notebooks or issue reports.
+The API requires a PostgreSQL connection. Set `UPI_DATABASE_URL` to a database you control.
 
 For rules-only mode:
 
@@ -100,7 +130,7 @@ $env:UPI_DATABASE_URL = "postgresql://<user>:<password>@<host>:<port>/<database>
 uvicorn src.api:app --reload
 ```
 
-For hybrid rules-plus-Qwen mode, set the path to a trained checkpoint as well:
+For hybrid rules-plus-Qwen mode:
 
 ```powershell
 $env:MODEL_PATH = "artifacts/qwen-upi-triage"
@@ -108,6 +138,4 @@ $env:TRIAGE_MODE = "hybrid"
 uvicorn src.api:app --reload
 ```
 
-Open `http://127.0.0.1:8000` for the dashboard or `http://127.0.0.1:8000/docs` for the interactive API documentation.
-
-Use synthetic events only. Do not enter real account numbers, UPI PINs, OTPs, or customer data.
+Open `http://127.0.0.1:8000` for the dashboard or `http://127.0.0.1:8000/docs` for the API documentation.
